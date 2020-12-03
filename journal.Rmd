@@ -9,7 +9,7 @@ output:
     collapsed: false
     number_sections: true
     toc_depth: 3
-    #code_folding: hide
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
@@ -31,11 +31,16 @@ Challange for chapter 2 is done
 samples <- rnorm(100, mean=0, sd=1)
 hist(samples)
 ```
+## web scraping
+ In general, web scraping in R (or in any other language) boils down to the following three steps:
 
+* Get the HTML for the web page that you want to scrape
+* Decide what part of the page you want to read and find out what HTML/CSS you need to select it
+* Select the HTML and analyze it in the way you need
 
-# Business Data Science Basics Challanges
+# Business Data Science Basics Challenges
 
-## Chapter 2 Challanges
+## Chapter 2 Challenges
 
 Preparing the data ...
 
@@ -93,7 +98,7 @@ bike_orderlines_wrangled_tbl <- bike_orderlines_joined_tbl %>%
 
 ```
 
-### Challange 1 
+### Challenge 1 
 ```{r}
 bike_orderlines_wrangled_state_tbl <- bike_orderlines_wrangled_tbl  %>%
   # 5.1 Separate category name
@@ -139,7 +144,7 @@ sales_by_loc_tbl  %>%
   )
 ```
 
-### Challange 2
+### Challenge 2
 ```{r}
 sales_by_year_loc_tbl <- bike_orderlines_wrangled_state_tbl %>%
   
@@ -184,4 +189,111 @@ sales_by_year_loc_tbl %>%
     subtitle = "",
     fill = "Main category" # Changes the legend name
   )
+```
+
+## Chapter 3 Challenges
+
+### Challenge 1 
+```{r}
+# Libraries 
+library(httr)
+library(jsonlite)
+library(dplyr)
+library(keyring)
+library("data.table")
+library(tidyverse) # Main Package - Loads dplyr, purrr, etc.
+library(rvest)     # HTML Hacking & Web Scraping
+library(xopen)     # Quickly opening URLs
+library(jsonlite)  # converts JSON files to R objects
+library(glue)      # concatenate strings
+library(stringi)   # character string/text processing
+library(lubridate)
+library(anytime)
+# Securing My API 
+#keyring::key_set("MYAPI")
+
+# get data from API
+my_url <- paste0("http://dataservice.accuweather.com/forecasts/",
+                 "v1/daily/5day/178556?apikey=", 
+                 key_get("MYAPI"))
+my_raw_result <- httr::GET(my_url)
+my_content <- httr::content(my_raw_result, as = 'text') %>%
+  fromJSON()
+forcast <- my_content$DailyForecasts
+
+Weather <- forcast %>% select(EpochDate,Temperature)
+Temperature<- Weather %>% select(Temperature)%>% as.data.table()  
+date <- Weather %>% select(EpochDate) %>% as_tibble()
+
+date <- map(date, anytime)
+date<- date %>% as_tibble()
+Max_Temp <- Temperature %>% select(Temperature.Maximum.Value)
+Min_Temp <- Temperature %>% select(Temperature.Minimum.Value)
+
+names(Max_Temp)[1]<-paste("Maximum Temperature")
+names(Min_Temp)[1]<-paste("Minimum Temperature")
+
+Final_Forcast <- cbind(date,Max_Temp,Min_Temp)
+Final_Forcast %>% as_tibble()
+Final_Forcast %>%
+  
+  ggplot(aes(x = EpochDate, y = `Maximum Temperature`)) +
+  
+  # Geometries
+  geom_col() + # Run up to here to get a stacked bar plot
+
+  
+  # Formatting
+  scale_y_continuous(labels = scales::dollar_format(big.mark = ".", 
+                                                    decimal.mark = ",", 
+                                                    prefix = "", 
+                                                    suffix = " F")) +
+  labs(
+    title = "Forcast for next 5 Days",
+    subtitle = "Maximum Temperature",
+    fill = "Main category" # Changes the legend name
+  )
+```
+
+### Challenge 2
+
+```{r}
+url_home          <- "https://www.rosebikes.de/fahrr%C3%A4der"
+
+# Read in the HTML for the entire webpage
+html_home         <- read_html(url_home)
+
+bike_family_tbl <- html_home %>%
+  
+  html_nodes(css = ".catalog-categories-item__link") %>%
+  html_text()
+  # ...and extract the information of the id attribute
+ # html_attr('title')
+
+price <- html_home %>%
+  
+  html_nodes(css = ".catalog-categories-item__link") %>%
+  html_text() %>%
+  stringr::str_replace_all("[[/.]]", replacement = "") %>%
+  stringr::str_extract(pattern = "[0-9 | /,]+") %>% 
+  as_tibble()
+# ...and extract the information of the id attribute
+# html_attr('title')
+
+model <- html_home %>%
+  
+  html_nodes(css = ".catalog-categories-item__link") %>%
+  html_text() %>%
+  stringr::str_extract("[a-z | A-Z | /-]+") %>%
+  as_tibble()
+#as.numeric()
+# ...and extract the information of the id attribute
+# html_attr('title')
+
+
+names(model)[1]<-paste("Model")
+names(price)[1]<-paste("Starting Price")
+
+Data_Final <- cbind(model,price)
+Data_Final
 ```
