@@ -40,7 +40,7 @@ hist(samples)
 
 # Business Data Science Basics Challenges
 
-## Chapter 2 Challenges
+## Chapter 2 Challenges (Intro to the tidyverse)
 
 Preparing the data ...
 
@@ -191,7 +191,7 @@ sales_by_year_loc_tbl %>%
   )
 ```
 
-## Chapter 3 Challenges
+## Chapter 3 Challenges (Data Acquisition)
 
 ### Challenge 1 
 ```{r}
@@ -295,5 +295,257 @@ names(model)[1]<-paste("Model")
 names(price)[1]<-paste("Starting Price")
 
 Data_Final <- cbind(model,price)
+saveRDS(Data_Final, "Final_Data.rds")
 Data_Final
+```
+# Chapter 4 Challenges (Data Wrangling)
+
+Prepare the data and processing ... 
+```{r , eval=FALSE}
+# 1.0 Load libraries ----
+library(vroom)
+library(tidyverse)
+library(data.table)
+library(readr)
+
+# 2.0 DATA IMPORT & Data Table Conversion ----
+
+# 2.1 Assignee Data ----
+
+col_types_assignee <- list(
+  id = col_character(),
+  type = col_integer(),
+  name_first = col_skip(),
+  name_last = col_skip(),
+  organization = col_character()
+)
+
+assignee_tbl <- vroom(
+  file       = "DS_101/02_data_wrangling/assignee.tsv", 
+  delim      = "\t", 
+  col_types  = col_types_assignee,
+  na         = c("", "NA", "NULL")
+)
+
+setDT(assignee_tbl)
+
+# 2.2 Patent Assignee Data ----
+
+col_types_patent_assignee <- list(
+  patent_id = col_character(),
+  assignee_id = col_character(),
+  location_id = col_skip()
+)
+
+patent_assignee_tbl <- vroom(
+  file       = "DS_101/02_data_wrangling/patent_assignee.tsv", 
+  delim      = "\t", 
+  col_types  = col_types_patent_assignee,
+  na         = c("", "NA", "NULL")
+)
+
+setDT(patent_assignee_tbl)
+
+# 2.3 Patent Data ----
+
+col_types_patent <- list(
+  id = col_character(),
+  type = col_character(),
+  number = col_skip(),
+  country = col_skip(),
+  date = col_date("%Y-%m-%d"),
+  abstract = col_skip(),
+  title = col_skip(),
+  kind = col_skip(),
+  num_claims = col_double(),
+  filename = col_skip(),
+  withdrawn = col_skip()
+)
+
+patent_tbl <- vroom(
+  file       = "DS_101/02_data_wrangling/patent.tsv", 
+  delim      = "\t", 
+  col_types  = col_types_patent,
+  na         = c("", "NA", "NULL")
+)
+
+setDT(patent_tbl)
+
+# 2.4 USPC Data ----
+
+col_types_uspc <- list(
+  uuid = col_skip(),
+  patent_id = col_character(),
+  mainclass_id = col_character(),
+  subclass_id = col_skip(),
+  sequence = col_skip()
+)
+
+uspc_tbl <- vroom(
+  file       = "DS_101/02_data_wrangling/uspc.tsv", 
+  delim      = "\t", 
+  col_types  = col_types_uspc,
+  na         = c("", "NA", "NULL")
+)
+
+setDT(uspc_tbl)
+
+# 3.0 DATA WRANGLING ----
+
+# 3.1 Renaming columns ----
+
+setnames(assignee_tbl, "id", "assignee_id")
+setnames(assignee_tbl, "type", "assignee_type")
+setnames(patent_tbl, "id", "patent_id")
+setnames(patent_tbl, "type", "patent_type")
+
+
+# 3.2 Joining / Merging Data ----
+
+ch1_combined_data <- merge(x = assignee_tbl, y = patent_assignee_tbl, 
+                           by    = "assignee_id", 
+                           all.x = TRUE, 
+                           all.y = FALSE)
+
+ch2_combined_data <- merge(x = ch1_combined_data, y = patent_tbl, 
+                           by    = "patent_id", 
+                           all.x = TRUE, 
+                           all.y = FALSE)
+
+ch3_combined_data <- merge(x = ch1_combined_data, y = uspc_tbl, 
+                           by    = "patent_id", 
+                           all.x = TRUE, 
+                           all.y = FALSE)
+
+# Challenge 4 task 1 ----
+
+ch1_keep_cols <- c("organization","assignee_type","patent_id")
+
+ch1_combined_data <- ch1_combined_data[, ..ch1_keep_cols]
+
+us_top10 <- ch1_combined_data[ assignee_type==2 & !is.na(patent_id) & !is.na(organization) , .N , by = organization][order(N, decreasing = TRUE)] %>% head(10)
+
+write_rds(us_top10, "DS_101/02_data_wrangling/us_top10.rds")
+```
+
+A List of the 10 US companies with the most assigned/granted patents
+```{r}
+us_top10 <- readRDS("DS_101/02_data_wrangling/us_top10.rds")
+us_top10
+```
+
+```{r, eval=FALSE}
+# Challenge 4 task 2 ----
+
+ch2_keep_cols <- c("date","organization","assignee_type","patent_id")
+
+ch2_combined_data <- ch2_combined_data[, ..ch2_keep_cols]
+
+us_top10_2019 <- ch2_combined_data[ assignee_type==2 & lubridate::year(date) == "2019" & !is.na(patent_id) & !is.na(organization) , .N , by = organization][order(N, decreasing = TRUE)] %>% head(10)
+
+write_rds(us_top10_2019, "DS_101/02_data_wrangling/us_top10_2019.rds")
+```
+
+A List of the top 10 companies with the most new granted patents for 2019
+```{r}
+us_top10_2019 <- readRDS("DS_101/02_data_wrangling/us_top10_2019.rds")
+us_top10_2019
+```
+
+```{r, eval=FALSE}
+# Challenge 4 task 3 ----
+
+ch3_keep_cols <- c("organization","assignee_type","patent_id","mainclass_id")
+
+ch3_combined_data <- ch3_combined_data[, ..ch3_keep_cols]
+
+ww_top10 <- ch1_combined_data[ assignee_type==2 || assignee_type==3 & !is.na(patent_id) & !is.na(organization) , .N , by = organization][order(N, decreasing = TRUE)] %>% head(10)
+
+main_class_top5 <- ch3_combined_data[ organization %in% as.vector(unlist(ww_top10$organization)) & !is.na(patent_id) & !is.na(mainclass_id), .N , by = mainclass_id][order(N, decreasing = TRUE)] %>% head(5)
+
+write_rds(main_class_top5, "DS_101/02_data_wrangling/main_class_top5.rds")
+```
+
+The top 5 USPTO tech main classes
+```{r}
+main_class_top5 <- readRDS("DS_101/02_data_wrangling/main_class_top5.rds")
+main_class_top5
+```
+
+# Chapter 5 Challenges (Data Visualization)
+
+```{r}
+# Libraries -----------------------------
+library(tidyverse)
+library(lubridate)
+
+# Data Processing -----------------------------------------
+covid_data_tbl <- read_csv("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv")
+covid_data_dated_tbl <- covid_data_tbl %>% mutate(date = make_date(year, month, day))
+
+Total_casses <- covid_data_dated_tbl %>% group_by(date)%>% summarise(Total = sum(cases))
+Total_casses <- Total_casses %>% arrange(!desc(date))
+cumsum <- Total_casses %>% mutate(cumsum = cumsum(Total))
+
+# Visualization ------------------------------------------
+cumsum %>%
+  
+  ggplot(aes(date, cumsum)) +
+  
+  theme_light() +
+  theme(
+    
+    title = element_text(face = "bold", color = "#08306B")
+  ) +
+  scale_x_date(limits = as.Date(c("2019-12-31","2020-12-06"))) +
+  ggtitle("limits = as.Date(c(\"2019-12-31\",\"2020-12-06\"))")+
+  
+  scale_y_continuous(labels = scales::scientific_format(scale = 1e-6, 
+                                                    preix = "*",
+                                                    suffix = "")) +
+  
+  labs(
+    title = "Covid-19 Cases",
+    subtitle = "Number of cases trending up",
+    caption = "",
+    x = "Date",
+    y = "Cases",
+    color = "cumsum" # Legend text
+  )+
+  
+  geom_line(size = 0.8, linetype = 1 , color = "blue")
+
+#-----------------------------------------------------------------------------------
+# Import Data & Processing
+
+world_map <- map_data("world")
+
+
+mor_rate_by_country <- covid_data_dated_tbl %>% group_by(countriesAndTerritories)%>% summarise(Mor_rate = sum(deaths)/sum(popData2019))
+
+
+mor_rate_by_country <- mor_rate_by_country %>% mutate(across(countriesAndTerritories, str_replace_all, "_", " ")) %>%
+  mutate(countriesAndTerritories = case_when(
+    
+    countriesAndTerritories == "United Kingdom" ~ "UK",
+    countriesAndTerritories == "United States of America" ~ "USA",
+    countriesAndTerritories == "Czechia" ~ "Czech Republic",
+    TRUE ~ countriesAndTerritories
+    
+  ))
+Corona_Data <- world_map %>% left_join(mor_rate_by_country, by = c("region" = "countriesAndTerritories"))
+
+Corona_Data <- Corona_Data %>% mutate(More_rate_factored = Mor_rate*10000000000) %>% filter(Mor_rate > 0) 
+
+# Visualization ---------------------------------------------------
+
+ggplot(Corona_Data, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill=More_rate_factored), colour = "white") +
+  expand_limits(x = Corona_Data$long, y = Corona_Data$lat)+
+  scale_fill_viridis_c(option = "C")+
+  labs(
+  title = "World Wide Mortality Rate",
+  subtitle = "",
+  fill = "Mortality Rate" # Changes the legend name
+)
 ```

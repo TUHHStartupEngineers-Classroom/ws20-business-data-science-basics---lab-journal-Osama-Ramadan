@@ -1,6 +1,4 @@
 
-#MYAPI
-
 # Libraries 
 library(httr)
 library(jsonlite)
@@ -103,4 +101,4 @@ names(model)[1]<-paste("Model")
 names(price)[1]<-paste("Price")
 
 Data_Final <- cbind(model,price)
-
+saveRDS(Data_Final, "Final_Data.rds")

@@ -62,6 +62,7 @@ bike_orderlines_wrangled_tbl <- bike_orderlines_joined_tbl %>%
   set_names(names(.) %>% str_replace_all("\\.", "_"))
 
 bike_orderlines_wrangled_tbl %>% glimpse()
+saveRDS(bike_orderlines_wrangled_tbl, "bike_orderlines.rds")
 # 6.0 Business Insights ----
 # 6.1 Sales by Year ----
 library(lubridate)
