@@ -36,3 +36,9 @@ vignettes/*.pdf
 *.knit.md
 
 # R Environment Variables
+docs/DS_101/02_data_wrangling/assignee.tsv
+docs/DS_101/02_data_wrangling/patent_assignee.tsv
+docs/loan_data/Performance_2019Q1.txt
+docs/test_df.csv
+loan_data/Performance_2019Q1.txt
+test_df.csv
